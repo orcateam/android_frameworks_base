@@ -1017,6 +1017,8 @@
   <java-symbol type="drawable" name="picture_emergency" />
   <java-symbol type="drawable" name="platlogo" />
   <java-symbol type="drawable" name="platlogo_alt" />
+  <java-symbol type="drawable" name="oclogo" />
+  <java-symbol type="drawable" name="oclogo_alt" />
   <java-symbol type="drawable" name="aokplogo" />
   <java-symbol type="drawable" name="aokplogo_alt" />
   <java-symbol type="drawable" name="cidlogo" />
