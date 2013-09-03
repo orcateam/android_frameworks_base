@@ -563,7 +563,7 @@
     <string name="app_window">Applications</string>
 
     <!--  Target/Action Strings -->
-    <string name="shortcut_label">AOKP Actions</string>
+    <string name="shortcut_label">Orca Actions</string>
     <string name="action_home">Home</string>
     <string name="action_back">Back</string>
     <string name="action_recents">Recents</string>
