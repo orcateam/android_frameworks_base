@@ -51,10 +51,10 @@ public class TogglePibTile extends QuickSettingsTile {
 
     private synchronized void updateTile() {
         if(getUiInvertedMode()){
-            mDrawable = R.drawable.ic_qs_pib_on;
+            mDrawable = R.drawable.ic_qs_bf_dark_on;
             mLabel = mContext.getString(R.string.quick_settings_pib_on_label); 
         }else{
-            mDrawable = R.drawable.ic_qs_pib_off;
+            mDrawable = R.drawable.ic_qs_bf_dark_off;
             mLabel = mContext.getString(R.string.quick_settings_pib_off_label); 
         }
     }
