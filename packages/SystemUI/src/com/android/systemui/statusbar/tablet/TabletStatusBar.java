@@ -614,6 +614,8 @@ public class TabletStatusBar extends BaseStatusBar implements
         if (mRecreating) {
             if (mAppSidebar != null)
                 mWindowManager.removeView(mAppSidebar);
+        } else {
+            addActiveDisplayView();
         }
         mAppSidebar = (AppSidebar)View.inflate(context, R.layout.app_sidebar, null);
         mWindowManager.addView(mAppSidebar, getAppSidebarLayoutParams(mSidebarPosition));

@@ -106,6 +106,7 @@ import com.android.systemui.statusbar.policy.Clock;
 import com.android.systemui.statusbar.policy.ClockCenter;
 import com.android.systemui.statusbar.policy.NetworkController;
 import com.android.systemui.statusbar.policy.NotificationRowLayout;
+import com.android.systemui.statusbar.policy.activedisplay.ActiveDisplayView;
 import com.android.systemui.statusbar.tablet.StatusBarPanel;
 import com.android.systemui.statusbar.tablet.TabletTicker;
 import com.android.systemui.statusbar.view.PieStatusPanel;
@@ -269,6 +270,8 @@ public abstract class BaseStatusBar extends SystemUI implements
     public NotificationRowLayout getNotificationRowLayout() {
         return mPile;
     }
+
+    protected ActiveDisplayView mActiveDisplayView;
 
     public IStatusBarService getStatusBarService() {
         return mBarService;
@@ -1996,5 +1999,34 @@ public abstract class BaseStatusBar extends SystemUI implements
         }
         if(mClock != null) mClock.setTextColor(mClockColor);
         if(mCClock != null) mCClock.setTextColor(mClockColor);
+    }
+
+    protected void addActiveDisplayView() {
+        mActiveDisplayView = (ActiveDisplayView)View.inflate(mContext, R.layout.active_display, null);
+        mWindowManager.addView(mActiveDisplayView, getActiveDisplayViewLayoutParams());
+        mActiveDisplayView.setStatusBar(this);
+    }
+
+    protected void removeActiveDisplayView() {
+        if (mActiveDisplayView != null)
+            mWindowManager.removeView(mActiveDisplayView);
+    }
+
+    protected WindowManager.LayoutParams getActiveDisplayViewLayoutParams() {
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_STATUS_BAR_PANEL,
+                0
+                        | WindowManager.LayoutParams.FLAG_TOUCHABLE_WHEN_WAKING
+                        | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                        | WindowManager.LayoutParams.FLAG_SPLIT_TOUCH,
+                PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.FILL_VERTICAL | Gravity.FILL_HORIZONTAL;
+        lp.setTitle("ActiveDisplayView");
+
+        return lp;
     }
 }

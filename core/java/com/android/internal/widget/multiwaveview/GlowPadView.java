@@ -31,10 +31,15 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.graphics.Paint;
+import android.graphics.Paint.Align;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.UserHandle;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -46,6 +51,7 @@ import android.view.accessibility.AccessibilityManager;
 
 import com.android.internal.R;
 
+import java.lang.Math;
 import java.util.ArrayList;
 
 /**
@@ -106,7 +112,6 @@ public class GlowPadView extends View {
         public void onGrabbed(View v, int handle);
         public void onReleased(View v, int handle);
         public void onTrigger(View v, int target);
-        public void onTargetChange(View v, int target);
         public void onGrabbedStateChange(View v, int handle);
         public void onFinishFinalAnimation();
     }
@@ -128,6 +133,8 @@ public class GlowPadView extends View {
     private static final float TARGET_SCALE_COLLAPSED = 0.8f;
     private static final float RING_SCALE_EXPANDED = 1.0f;
     private static final float RING_SCALE_COLLAPSED = 0.5f;
+    private static final float HANDLE_TEXT_RADIUS = 120f;
+    private static final float MAX_TEXT_ARC_RADIANS = (float) (270.0 / 170.0 * Math.PI);
 
     private ArrayList<TargetDrawable> mTargetDrawables = new ArrayList<TargetDrawable>();
     private AnimationBundle mWaveAnimations = new AnimationBundle();
@@ -151,6 +158,12 @@ public class GlowPadView extends View {
     private int mMaxTargetWidth;
     private float mRingScaleFactor = 1f;
     private boolean mAllowScaling;
+    private boolean mDrawOuterRing = true;
+
+    private Paint mPaintText;
+    private String mHandleText = "";
+    private int mTextRadius;
+    private float mMaxTextArcLength;
 
     private float mOuterRadius = 0.0f;
     private float mSnapMargin = 0.0f;
@@ -286,8 +299,6 @@ public class GlowPadView extends View {
         }
         if (mTargetDrawables == null || mTargetDrawables.size() == 0) {
             throw new IllegalStateException("Must specify at least one target drawable");
-        } else if (mTargetDrawables.size() > 1) {
-            mMagneticTargets = false;
         }
 
         // Read array of target descriptions
@@ -321,6 +332,16 @@ public class GlowPadView extends View {
         mPointCloud = new PointCloud(pointDrawable);
         mPointCloud.makePointCloud(mInnerRadius, mOuterRadius);
         mPointCloud.glowManager.setRadius(mGlowRadius);
+
+        mPaintText = new Paint();
+        mPaintText.setAntiAlias(true);
+        mPaintText.setColor(res.getColor(android.R.color.white));
+        mPaintText.setTextAlign(Align.CENTER);
+        mPaintText.setStyle(Paint.Style.FILL_AND_STROKE);
+        mPaintText.setFakeBoldText(true);
+        mPaintText.setTextSize(res.getDimensionPixelSize(R.dimen.glowpad_notification_font_size));
+        mTextRadius = res.getDimensionPixelSize(R.dimen.glowpad_notification_text_radius);
+        mMaxTextArcLength = mTextRadius * MAX_TEXT_ARC_RADIANS;
     }
 
     private int getResourceId(TypedArray a, int id) {
@@ -409,6 +430,7 @@ public class GlowPadView extends View {
                 startBackgroundAnimation(0, 0.0f);
                 mHandleDrawable.setState(TargetDrawable.STATE_INACTIVE);
                 mHandleDrawable.setAlpha(1.0f);
+                mPaintText.setAlpha(255);
                 break;
 
             case STATE_START:
@@ -416,6 +438,7 @@ public class GlowPadView extends View {
                 break;
 
             case STATE_FIRST_TOUCH:
+                mPaintText.setAlpha(0);
                 mHandleDrawable.setAlpha(0.0f);
                 deactivateTargets();
                 showTargets(true);
@@ -427,12 +450,14 @@ public class GlowPadView extends View {
                 break;
 
             case STATE_TRACKING:
+                mPaintText.setAlpha(0);
                 mHandleDrawable.setAlpha(0.0f);
                 showGlow(REVEAL_GLOW_DURATION , REVEAL_GLOW_DELAY, 1.0f, null);
                 break;
 
             case STATE_SNAP:
                 // TODO: Add transition states (see list_selector_background_transition.xml)
+                mPaintText.setAlpha(0);
                 mHandleDrawable.setAlpha(0.0f);
                 showGlow(REVEAL_GLOW_DURATION , REVEAL_GLOW_DELAY, 0.0f, null);
                 break;
@@ -476,9 +501,6 @@ public class GlowPadView extends View {
             target.setState(TargetDrawable.STATE_INACTIVE);
         }
         mActiveTarget = -1;
-        if (mOnTriggerListener != null) {
-            mOnTriggerListener.onTargetChange(this, mActiveTarget);
-        }
     }
 
     /**
@@ -657,9 +679,6 @@ public class GlowPadView extends View {
     private void internalSetTargetResources(ArrayList<TargetDrawable> drawList) {
         mTargetResourceId = 0;
         mTargetDrawables = drawList;
-        if (mTargetDrawables.size() > 1) {
-            mMagneticTargets = false;
-        }
         updateTargetPositions(mWaveCenterX, mWaveCenterY);
         updatePointCloudPosition(mWaveCenterX, mWaveCenterY);
         hideTargets(false, false);
@@ -677,14 +696,6 @@ public class GlowPadView extends View {
         } else {
             internalSetTargetResources(resourceId);
         }
-    }
-
-    public void setMagneticTargets(boolean active) {
-        mMagneticTargets = active;
-    }
-
-    public void setOffset(float offset) {
-        mFirstItemOffset = (float) Math.toRadians(offset);
     }
 
     public void setTargetResources(ArrayList<TargetDrawable> drawList) {
@@ -757,10 +768,6 @@ public class GlowPadView extends View {
         } else {
             mVibrator = null;
         }
-    }
-
-    public boolean getMagneticTargets() {
-        return mMagneticTargets;
     }
 
     /**
@@ -1020,9 +1027,6 @@ public class GlowPadView extends View {
             }
         }
         mActiveTarget = activeTarget;
-        if (mOnTriggerListener !=null) {
-            mOnTriggerListener.onTargetChange(this, mActiveTarget);
-        }
     }
 
     @Override
@@ -1279,7 +1283,7 @@ public class GlowPadView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         mPointCloud.draw(canvas);
-        mOuterRing.draw(canvas);
+        if (mDrawOuterRing) mOuterRing.draw(canvas);
         final int ntargets = mTargetDrawables.size();
         for (int i = 0; i < ntargets; i++) {
             TargetDrawable target = mTargetDrawables.get(i);
@@ -1288,6 +1292,33 @@ public class GlowPadView extends View {
             }
         }
         mHandleDrawable.draw(canvas);
+
+        if (!TextUtils.isEmpty(mHandleText) && mPaintText.getAlpha() != 0) {
+            float x = mHandleDrawable.getPositionX();
+            float y = mHandleDrawable.getPositionY();
+            Path circle = new Path();
+            circle.addCircle(x, y, mTextRadius, Path.Direction.CW);
+            canvas.rotate(90f, x, y);
+            canvas.drawTextOnPath(mHandleText, circle, 0, 0, mPaintText);
+        }
+    }
+
+    public void setHandleDrawable(TargetDrawable d) {
+        float x = mHandleDrawable.getPositionX();
+        float y = mHandleDrawable.getPositionY();
+        mHandleDrawable = new TargetDrawable(d);
+        mHandleDrawable.setPositionX(x);
+        mHandleDrawable.setPositionY(y);
+    }
+
+    public void setHandleText(String text) {
+        mHandleText = TextUtils.ellipsize(
+                text, new TextPaint(mPaintText), mMaxTextArcLength,
+                TextUtils.TruncateAt.END).toString();
+    }
+
+    public void setDrawOuterRing(boolean drawOuterRing) {
+        mDrawOuterRing = drawOuterRing;
     }
 
     public void setOnTriggerListener(OnTriggerListener listener) {
